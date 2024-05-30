@@ -1,0 +1,30 @@
+*
+tampilkan tabel film
+siapa nama dari aktor id 10
+tampilkan semua film yang ada
+
+**
+tampilkan aktor dengan aktor id 1,5,12
+apa nama fim dengan durasi terpanjang
+
+***
+siapa aktor yang paling banyak memainkan film
+berapa rata-rata durasi semua film
+Berapa rata-rata durasi film berdasarkan kategori
+Aktor mana yang memiliki nama depan 'Scarlett'
+Tampilkan nama depan dan nama belakang setiap aktor dalam satu kolom
+
+****
+Temukan semua aktor yang nama belakangnya mengandung huruf GEN
+Tampilkan semua aktor yang muncul dalam film Alone Trip
+Tampilkan film yang paling sering disewa dalam urutan menurun
+Tampilkan setiap toko beserta ID toko, kota, dan negara
+
+Follow-up questions #1
+siapa aktor yang paling banyak memainkan film
+film apa-apa saja yang dimainkan olehnya
+dari film-film itu, film apa dengan durasi terpanjang
+
+Follow-up questions #2
+sebutkan nama dari aktor id 1, 5, 12
+dari tiga aktor tadi, siapa diantara mereka yang paling banyak memainkan film
