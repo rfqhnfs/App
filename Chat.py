@@ -110,7 +110,7 @@ user_input = st.chat_input("Enter your message:")
 
 if user_input:
     st.session_state.messages.append({"role": "User", "content": user_input})
-    pertanyaan = user_input
+    questions = user_input
 
     # Run SQL query
     with st.spinner("Processing..."):
@@ -130,12 +130,12 @@ if user_input:
             natural_response = "Tidak dapat merubah isi database"
             df = []
             st.session_state.messages.append({"role": "Chatbot (Natural Language Response)", "content": natural_response})
-        jawaban = natural_response
+        answers = natural_response
     if len(st.session_state.riwayat) < 10:
-        st.session_state.riwayat.loc[len(st.session_state.riwayat.index)] = [pertanyaan, jawaban]
+        st.session_state.riwayat.loc[len(st.session_state.riwayat.index)] = [questions, answers]
     else:
         st.session_state.riwayat = st.session_state.riwayat.drop(index=0).reset_index(drop=True)
-        st.session_state.riwayat.loc[len(st.session_state.riwayat.index)] = [pertanyaan, jawaban]
+        st.session_state.riwayat.loc[len(st.session_state.riwayat.index)] = [questions, answers]
 
 # Display chat history
 for message in st.session_state.messages:
