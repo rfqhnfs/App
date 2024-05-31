@@ -10,7 +10,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-# Initialize Azure Chat OpenAI
+# Initialize LLM
 llm = AzureChatOpenAI(
     deployment_name=os.getenv('deployment_name'),
     openai_api_version=os.getenv('openai_api_version'),
@@ -22,10 +22,8 @@ llm = AzureChatOpenAI(
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Create table for chat history
-#history_message = pd.DataFrame(columns=["question", "answer"])
 
-# Define chat prompt template for database query
+# Define chat prompt template for generate sql query
 db_template = """
 Dibawah ini adalah sebuah database schema, tulislah MySQL query berdasarkan text yang diinput, selalu nama tabel ketika memilih kolom untuk menghindari ambiguitas.
 Kamu harus menimbang Message History ketika membuat SQL query untuk berjaga-jaga jika pertanyaan tersebut adalah follow-up question:
@@ -35,10 +33,9 @@ Question: {question}
 Message History: {history_message}
 SQL Query:
 """
-
 db_prompt = ChatPromptTemplate.from_template(db_template)
 
-# Define chat prompt template for SQL response
+# Define chat prompt template for natural language response
 sql_template = """
 Berdasarkan table schema, sql qeury, dan sql response dibawah ini, buatlah sebuah respon untuk merespon dari semua input yang ada.
 {schema}
@@ -48,25 +45,25 @@ SQL Query: {query}
 SQL Response: {response}
 respon:
 """
-
 sql_prompt = ChatPromptTemplate.from_template(sql_template)
 
-# Create chain for SQL queries
+# Create chain for generate sql query
 sql_chain = (
     db_prompt
     | llm.bind(stop="\nSQL Result:")
     | StrOutputParser()
 )
 
-# Create full chain
+# Create chain for generate natural language response
 full_chain = (
     sql_prompt
     | llm
     | StrOutputParser()
 )
 
+# create table to store question and answer
 if "riwayat" not in st.session_state:
-    st.session_state.riwayat = pd.DataFrame(columns=['pertanyaan', 'jawaban'])
+    st.session_state.riwayat = pd.DataFrame(columns=['questions', 'answers'])
 
 
 ########################## MAIN APP #####################################
@@ -75,6 +72,7 @@ st.set_page_config(
 )
 st.title("Main Page")
 
+# display sidebar
 with st.sidebar:
     st.subheader("Settings")
     st.write("Connect to the database and start chatting.")
@@ -87,7 +85,7 @@ with st.sidebar:
     
     if st.button("Connect"):
         with st.spinner("Connecting to database..."):
-            # Connect to MySQL
+            # Connect to database
             cnx = mysql.connector.connect(
                 host=st.session_state["Host"],
                 user=st.session_state["User"],
@@ -96,7 +94,7 @@ with st.sidebar:
                 database=st.session_state["Database"]
             )
 
-            # Connect to the database
+            # get database schema
             db = SQLDatabase.from_uri(f"mysql+mysqlconnector://{st.session_state['User']}:{st.session_state['Password']}@{st.session_state['Host']}:{st.session_state['Port']}/{st.session_state['Database']}")
             db_schema = db.get_table_info()
             st.session_state.db_schema = db_schema
@@ -112,21 +110,21 @@ if user_input:
     st.session_state.messages.append({"role": "User", "content": user_input})
     questions = user_input
 
-    # Run SQL query
+    # run the first chain (generate sql query)
     with st.spinner("Processing..."):
         query_response = sql_chain.invoke({"schema": st.session_state.db_schema, "question": user_input, "history_message": st.session_state.riwayat})
         st.session_state.messages.append({"role": "Chatbot (SQL Response)", "content": query_response})
 
-        # Execute query and get response
+        # Execute generated query and get response
         cursor = st.session_state.cnx.cursor()
         if "UPDATE" not in query_response:
             cursor.execute(query_response)
             df = pd.DataFrame(cursor.fetchall(), columns=cursor.column_names)
             st.session_state.messages.append({"role": "Database Output", "content": df})
+            # run second chain to generate natural language response
             natural_response = full_chain.invoke({"question": user_input, "query": query_response, "response": df, "schema": st.session_state.db_schema})
             st.session_state.messages.append({"role": "Chatbot (Natural Language Response)", "content": natural_response})
         else:
-            #st.write("Access Denied")
             natural_response = "Tidak dapat merubah isi database"
             df = []
             st.session_state.messages.append({"role": "Chatbot (Natural Language Response)", "content": natural_response})
@@ -147,13 +145,11 @@ for message in st.session_state.messages:
     elif message["role"] == "Chatbot (SQL Response)":
         st.session_state.messages.append({"role": "assistant", "content": message["content"]})
         with st.chat_message("assistant"):
-            #st.markdown("SQL Query:")
             st.code(message["content"], language="sql")
 
     elif message["role"] == "Database Output":
         st.session_state.messages.append({"role": "assistant", "content": message["content"]})
         with st.chat_message("assistant"):
-            #st.write("Database Output:")
             st.dataframe(message["content"],use_container_width=True)
 
     elif message["role"] == "Chatbot (Natural Language Response)":
